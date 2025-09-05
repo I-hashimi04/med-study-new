@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Study Hub - API Features Demo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen p-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <header class="mb-8">
+                <h1 class="text-4xl font-bold text-gray-900">Medical Study Hub</h1>
+                <p class="text-xl text-gray-600 mt-2">Enhanced with streaming, feedback, admin panel, and advanced features</p>
+            </header>
+
+            <!-- Feature Cards Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <!-- Streaming API -->
+                <div class="bg-white rounded-lg p-6 shadow-lg border-l-4 border-blue-500">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">🚀 Streaming API</h3>
+                    <p class="text-gray-600 mb-4">Real-time question generation with Server-Sent Events</p>
+                    <div class="bg-blue-50 p-3 rounded text-sm">
+                        <code>POST /api/generate-tutor-questions-stream</code>
+                    </div>
+                </div>
+
+                <!-- Feedback System -->
+                <div class="bg-white rounded-lg p-6 shadow-lg border-l-4 border-green-500">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">⭐ Feedback System</h3>
+                    <p class="text-gray-600 mb-4">Collect user ratings and improve question quality</p>
+                    <div class="flex space-x-1 mb-2">
+                        <span class="text-yellow-400">★★★★★</span>
+                    </div>
+                    <div class="bg-green-50 p-3 rounded text-sm">
+                        <code>POST /api/feedback</code>
+                    </div>
+                </div>
+
+                <!-- Model Comparison -->
+                <div class="bg-white rounded-lg p-6 shadow-lg border-l-4 border-purple-500">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">🔬 Model Comparison</h3>
+                    <p class="text-gray-600 mb-4">Compare different AI models for question generation</p>
+                    <div class="bg-purple-50 p-3 rounded text-sm">
+                        <code>POST /api/compare-models</code>
+                    </div>
+                </div>
+
+                <!-- Advanced Question Types -->
+                <div class="bg-white rounded-lg p-6 shadow-lg border-l-4 border-orange-500">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">📝 New Question Types</h3>
+                    <p class="text-gray-600 mb-4">7 different question types including matching, ordering, clinical scenarios</p>
+                    <div class="flex flex-wrap gap-1">
+                        <span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">MCQ</span>
+                        <span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">Matching</span>
+                        <span class="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">Clinical</span>
+                    </div>
+                </div>
+
+                <!-- Docker & Deployment -->
+                <div class="bg-white rounded-lg p-6 shadow-lg border-l-4 border-red-500">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">🐳 Containerization</h3>
+                    <p class="text-gray-600 mb-4">Docker support with multi-stage builds and CI/CD pipeline</p>
+                    <div class="bg-red-50 p-3 rounded text-sm">
+                        <code>docker build -t med-study .</code>
+                    </div>
+                </div>
+
+                <!-- Logging & Monitoring -->
+                <div class="bg-white rounded-lg p-6 shadow-lg border-l-4 border-indigo-500">
+                    <h3 class="text-xl font-semibold text-gray-800 mb-3">📊 Enhanced Logging</h3>
+                    <p class="text-gray-600 mb-4">Structured logging with metrics and error tracking</p>
+                    <div class="bg-indigo-50 p-3 rounded text-sm">
+                        <code>MedicalStudyLogger</code>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Panel Preview -->
+            <div class="bg-white rounded-lg shadow-lg mb-8">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-2xl font-semibold text-gray-800">👨‍💼 Admin Panel Features</h2>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                        <div class="bg-blue-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-blue-600">156</div>
+                            <div class="text-sm text-gray-600">Total Questions</div>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-green-600">4.2/5</div>
+                            <div class="text-sm text-gray-600">Average Rating</div>
+                        </div>
+                        <div class="bg-purple-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-purple-600">25</div>
+                            <div class="text-sm text-gray-600">Active Tags</div>
+                        </div>
+                        <div class="bg-orange-50 p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-orange-600">78</div>
+                            <div class="text-sm text-gray-600">Moderate Level</div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <button class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Add Question</button>
+                        <button class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Import</button>
+                        <button class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700">Export</button>
+                        <button class="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700">Analytics</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Endpoints Summary -->
+            <div class="bg-white rounded-lg shadow-lg">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-2xl font-semibold text-gray-800">🔗 API Endpoints</h2>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <h4 class="font-semibold text-gray-700">Core Endpoints</h4>
+                            <div class="text-sm space-y-1">
+                                <div><span class="font-mono bg-gray-100 px-2 py-1 rounded">GET /health</span> - Health check</div>
+                                <div><span class="font-mono bg-gray-100 px-2 py-1 rounded">POST /api/generate-tutor-questions</span> - Generate questions</div>
+                                <div><span class="font-mono bg-gray-100 px-2 py-1 rounded">POST /api/generate-tutor-questions-stream</span> - Streaming</div>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <h4 class="font-semibold text-gray-700">Enhanced Features</h4>
+                            <div class="text-sm space-y-1">
+                                <div><span class="font-mono bg-gray-100 px-2 py-1 rounded">POST /api/feedback</span> - Submit feedback</div>
+                                <div><span class="font-mono bg-gray-100 px-2 py-1 rounded">POST /api/compare-models</span> - Model comparison</div>
+                                <div><span class="font-mono bg-gray-100 px-2 py-1 rounded">GET /api/question-types</span> - Available types</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <footer class="mt-12 text-center text-gray-500">
+                <p>Medical Study Hub - Enhanced with streaming, feedback, containerization, and advanced question types</p>
+            </footer>
+        </div>
+    </div>
+</body>
+</html>
