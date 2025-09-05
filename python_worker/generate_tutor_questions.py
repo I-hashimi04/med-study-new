@@ -2,7 +2,7 @@ from fastapi import APIRouter, Body, HTTPException, status
 from pydantic import BaseModel, constr
 from typing import List, Optional
 import logging
-from python_worker.main import query_local_llm
+from main import query_local_llm
 
 router = APIRouter()
 
@@ -14,28 +14,38 @@ class GenerateTutorQuestionsRequest(BaseModel):
     filetype: Optional[str] = None
 
 class TutorQuestion(BaseModel):
-    question: str
+    type: str  # "open" or "mcq"
+    question: Optional[str] = None  # For open questions
+    stem: Optional[str] = None  # For MCQ questions
+    options: Optional[List[str]] = None  # For MCQ options
     answer: str
-    reference: Optional[str] = None  # Can reference slides, sections, images, tables, etc
-    difficulty: str                  # Now mandatory
+    explanation: Optional[str] = None  # For MCQ explanation
+    difficulty: str
     hint: Optional[str] = None
-    tags: List[str]                  # New: required tags
+    reference: Optional[str] = None
+    tags: List[str]
 
 class GenerateTutorQuestionsResponse(BaseModel):
     success: bool
+    learning_objectives: List[str]
     questions: List[TutorQuestion]
-    message: Optional[str] = None
+    message: str
 
-def parse_llm_questions(llm_output) -> List[TutorQuestion]:
+def parse_llm_questions(llm_output) -> tuple[List[str], List[TutorQuestion]]:
+    """Parse LLM output into learning objectives and questions"""
+    learning_objectives = llm_output.get("learning_objectives", [])
     questions = []
+    
     for item in llm_output.get("tutor_questions", []):
         difficulty = item.get("difficulty")
         tags = item.get("tags", [])
         if not difficulty or not tags:
             continue  # Skip incomplete questions
+            
         if item.get("type", "open") == "open":
             questions.append(
                 TutorQuestion(
+                    type="open",
                     question=item.get("question", ""),
                     answer=item.get("answer", ""),
                     reference=item.get("reference"),
@@ -45,28 +55,34 @@ def parse_llm_questions(llm_output) -> List[TutorQuestion]:
                 )
             )
         elif item.get("type", "") == "mcq":
-            stem = item.get("stem", "")
+            stem = item.get("question", "")  # MCQ questions use "question" field for stem
             options = item.get("options", [])
             answer = item.get("answer", "")
             explanation = item.get("explanation", "")
             ref = item.get("reference")
             hint = item.get("hint")
             mcq_tags = item.get("tags", [])
-            mcq_question = f"MCQ: {stem}\nOptions: {', '.join(options)}\nAnswer: {answer}\nExplanation: {explanation}"
-            questions.append(
-                TutorQuestion(
-                    question=mcq_question,
-                    answer=answer,
-                    reference=ref,
-                    difficulty=difficulty,
-                    hint=hint,
-                    tags=mcq_tags,
+            
+            if stem and options and answer and len(options) >= 4:
+                questions.append(
+                    TutorQuestion(
+                        type="mcq",
+                        stem=stem,
+                        options=options,
+                        answer=answer,
+                        explanation=explanation,
+                        reference=ref,
+                        difficulty=difficulty,
+                        hint=hint,
+                        tags=mcq_tags,
+                    )
                 )
-            )
-    return questions
+    
+    return learning_objectives, questions
 
 @router.post("/generate-tutor-questions", response_model=GenerateTutorQuestionsResponse, status_code=status.HTTP_200_OK)
 async def generate_tutor_questions(request: GenerateTutorQuestionsRequest = Body(...)):
+    """Generate tutor questions from reviewed text using LLM"""
     text = request.reviewed_text.strip()
     if not text:
         raise HTTPException(status_code=422, detail="Reviewed text is empty.")
@@ -75,7 +91,7 @@ async def generate_tutor_questions(request: GenerateTutorQuestionsRequest = Body
 
     try:
         llm_output = query_local_llm(text)
-        questions = parse_llm_questions(llm_output)
+        learning_objectives, questions = parse_llm_questions(llm_output)
     except Exception as e:
         logging.error(f"Error during LLM question generation: {e}")
         raise HTTPException(status_code=500, detail=f"Error during question generation: {str(e)}")
@@ -85,6 +101,27 @@ async def generate_tutor_questions(request: GenerateTutorQuestionsRequest = Body
 
     return GenerateTutorQuestionsResponse(
         success=True,
+        learning_objectives=learning_objectives,
         questions=questions,
         message="Tutor questions generated successfully."
     )
+
+# Alternative endpoint that matches the frontend expectation
+@router.post("/tutor-questions")
+async def tutor_questions_endpoint(request: dict = Body(...)):
+    """Alternative endpoint for tutor questions that matches frontend expectations"""
+    content = request.get("content", "")
+    
+    if not content:
+        # Return empty but valid response for missing content
+        return {
+            "learning_objectives": [],
+            "tutor_questions": []
+        }
+    
+    try:
+        llm_output = query_local_llm(content)
+        return llm_output
+    except Exception as e:
+        logging.error(f"Error in tutor-questions endpoint: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating questions: {str(e)}")

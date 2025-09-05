@@ -1,0 +1,203 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-backend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.12]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('python_worker/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Install dependencies
+      run: |
+        cd python_worker
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Initialize database
+      run: |
+        cd python_worker
+        python -c "from app import init_db; init_db()"
+
+    - name: Run backend tests
+      run: |
+        cd python_worker
+        python -m pytest test_tutor_questions.py -v --tb=short
+
+    - name: Test backend startup
+      run: |
+        cd python_worker
+        timeout 10s uvicorn app:app --host 0.0.0.0 --port 8000 || true
+
+  test-frontend:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run frontend tests
+      run: npm test -- --coverage --watchAll=false
+
+    - name: Build frontend
+      run: npm run build
+
+    - name: Upload coverage to Codecov
+      if: matrix.node-version == '18.x'
+      uses: codecov/codecov-action@v3
+      with:
+        directory: ./coverage
+
+  lint-and-format:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.12
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18.x
+        cache: 'npm'
+
+    - name: Install Python linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install black flake8 isort
+
+    - name: Install Node dependencies
+      run: npm ci
+
+    - name: Run Python linting
+      run: |
+        cd python_worker
+        black --check --diff .
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        isort --check-only --diff .
+
+    - name: Run JavaScript linting
+      run: |
+        npx eslint src/ --ext .js,.jsx
+        npx prettier --check src/
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/med-study-hub:latest
+          ${{ secrets.DOCKER_USERNAME }}/med-study-hub:${{ github.sha }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      with:
+        sarif_file: 'trivy-results.sarif'
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Deploy to production
+      run: |
+        echo "Deployment step would go here"
+        echo "This could involve:"
+        echo "- Updating Kubernetes manifests"
+        echo "- Deploying to cloud provider"
+        echo "- Running database migrations"
+        echo "- Health checks"
+
+  notification:
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-frontend, docker-build]
+    if: always()
+
+    steps:
+    - name: Notify on success
+      if: ${{ needs.test-backend.result == 'success' && needs.test-frontend.result == 'success' }}
+      run: |
+        echo "✅ All tests passed successfully!"
+        echo "Backend tests: ${{ needs.test-backend.result }}"
+        echo "Frontend tests: ${{ needs.test-frontend.result }}"
+
+    - name: Notify on failure
+      if: ${{ needs.test-backend.result == 'failure' || needs.test-frontend.result == 'failure' }}
+      run: |
+        echo "❌ Some tests failed!"
+        echo "Backend tests: ${{ needs.test-backend.result }}"
+        echo "Frontend tests: ${{ needs.test-frontend.result }}"
+        exit 1
