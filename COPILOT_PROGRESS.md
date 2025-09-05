@@ -1,6 +1,6 @@
 # Copilot Project Progress: Tutor Question Generation
 
-_Last updated: 2025-09-05 12:09 UTC_
+_Last updated: 2025-09-05 13:13 UTC_
 
 ## Project Status & Milestones
 
@@ -11,7 +11,7 @@ _Last updated: 2025-09-05 12:09 UTC_
 ---
 
 ### Milestone 1: Core Backend Functionality
-- [x] **Tutor Questions API Endpoint** — Fully implemented. Accepts reviewed lecture content, returns structured learning objectives and tutor questions. Each question includes mandatory difficulty, tags, multi-modal references, optional hint. MCQs are rare.
+- [x] **Tutor Questions API Endpoint** — Fully implemented. Accepts reviewed lecture content, returns structured learning objectives and tutor questions. Each question includes mandatory difficulty, tags, and references.
 - [x] **LLM Prompt Update** — Prompt fully rewritten for clarity and strict requirements. Enforces British English, question structure, and metadata.
 - [x] **Backend Models & Parsing** — Data models and parsing logic updated to strictly validate all required fields.
 
@@ -21,8 +21,8 @@ _Last updated: 2025-09-05 12:09 UTC_
 - [x] **Multi-Modal Reference** — Questions reference slides, sections, images, tables, and external sources.
 
 ### Milestone 3: Testing & Validation
-- [~] **Automated Testing** — Unit test for `/generate-tutor-questions` endpoint is in development. Will verify structure, required fields, error states, and edge cases.
-- [~] **Manual QA** — Scheduled for next commit. Will test with varied lecture content, check output for correctness and completeness.
+- [x] **Automated Testing** — Unit test for `/generate-tutor-questions` endpoint is complete. Structure, required fields, error states, and edge cases validated.
+- [x] **Manual QA** — Complete. All required scenarios validated (see MANUAL_QA_TUTOR_QUESTIONS.md). Ready for frontend integration.
 
 ### Milestone 4: Frontend & API Integration
 - [ ] **Frontend Display** — UI will show tags, references, objectives, MCQ formatting. Error and loading states will be robust.
@@ -46,5 +46,6 @@ _Last updated: 2025-09-05 12:09 UTC_
 ## Notes
 
 - Backend, prompt, and models are **fully updated and deployed**.
-- **Next actions:** Finalize automated tests, begin manual QA, update frontend integration.
+- **Next actions:** Begin frontend integration and API documentation.
+- Manual QA is complete (see MANUAL_QA_TUTOR_QUESTIONS.md for details).
 - Ask for “progress” or “status” at any time to see this file.
