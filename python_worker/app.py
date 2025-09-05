@@ -1,8 +1,6 @@
-# FastAPI app entry
-from fastapi import FastAPI
+# FastAPI app entry - import from main.py
+from python_worker.main import app
 
-app = FastAPI()
-
-@app.get("/")
-def read_root():
-    return {"msg": "Medical Student Study Hub Python Worker running"}
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
