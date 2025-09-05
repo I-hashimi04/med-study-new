@@ -14,28 +14,39 @@ class GenerateTutorQuestionsRequest(BaseModel):
     filetype: Optional[str] = None
 
 class TutorQuestion(BaseModel):
-    question: str
+    type: str = "open"  # "open" or "mcq"
+    question: str  # For open questions, the question text; for MCQs, the stem
     answer: str
     reference: Optional[str] = None  # Can reference slides, sections, images, tables, etc
     difficulty: str                  # Now mandatory
     hint: Optional[str] = None
     tags: List[str]                  # New: required tags
+    # MCQ-specific fields
+    options: Optional[List[str]] = None  # For MCQs only
+    explanation: Optional[str] = None    # For MCQs only
 
 class GenerateTutorQuestionsResponse(BaseModel):
     success: bool
     questions: List[TutorQuestion]
+    learning_objectives: List[str] = []  # Add learning objectives to response
     message: Optional[str] = None
 
-def parse_llm_questions(llm_output) -> List[TutorQuestion]:
+def parse_llm_questions(llm_output) -> tuple[List[TutorQuestion], List[str]]:
     questions = []
+    learning_objectives = llm_output.get("learning_objectives", [])
+    
     for item in llm_output.get("tutor_questions", []):
         difficulty = item.get("difficulty")
         tags = item.get("tags", [])
         if not difficulty or not tags:
             continue  # Skip incomplete questions
-        if item.get("type", "open") == "open":
+            
+        question_type = item.get("type", "open")
+        
+        if question_type == "open":
             questions.append(
                 TutorQuestion(
+                    type="open",
                     question=item.get("question", ""),
                     answer=item.get("answer", ""),
                     reference=item.get("reference"),
@@ -44,26 +55,29 @@ def parse_llm_questions(llm_output) -> List[TutorQuestion]:
                     tags=tags,
                 )
             )
-        elif item.get("type", "") == "mcq":
-            stem = item.get("stem", "")
+        elif question_type == "mcq":
+            stem = item.get("stem", "") or item.get("question", "")  # Handle both stem and question fields
             options = item.get("options", [])
             answer = item.get("answer", "")
             explanation = item.get("explanation", "")
             ref = item.get("reference")
             hint = item.get("hint")
             mcq_tags = item.get("tags", [])
-            mcq_question = f"MCQ: {stem}\nOptions: {', '.join(options)}\nAnswer: {answer}\nExplanation: {explanation}"
+            
             questions.append(
                 TutorQuestion(
-                    question=mcq_question,
+                    type="mcq",
+                    question=stem,  # Use stem for MCQ questions
                     answer=answer,
                     reference=ref,
                     difficulty=difficulty,
                     hint=hint,
                     tags=mcq_tags,
+                    options=options,
+                    explanation=explanation,
                 )
             )
-    return questions
+    return questions, learning_objectives
 
 @router.post("/generate-tutor-questions", response_model=GenerateTutorQuestionsResponse, status_code=status.HTTP_200_OK)
 async def generate_tutor_questions(request: GenerateTutorQuestionsRequest = Body(...)):
@@ -75,7 +89,7 @@ async def generate_tutor_questions(request: GenerateTutorQuestionsRequest = Body
 
     try:
         llm_output = query_local_llm(text)
-        questions = parse_llm_questions(llm_output)
+        questions, learning_objectives = parse_llm_questions(llm_output)
     except Exception as e:
         logging.error(f"Error during LLM question generation: {e}")
         raise HTTPException(status_code=500, detail=f"Error during question generation: {str(e)}")
@@ -86,5 +100,12 @@ async def generate_tutor_questions(request: GenerateTutorQuestionsRequest = Body
     return GenerateTutorQuestionsResponse(
         success=True,
         questions=questions,
+        learning_objectives=learning_objectives,
         message="Tutor questions generated successfully."
     )
+
+# Create alias for production endpoint
+@router.post("/tutor-questions", response_model=GenerateTutorQuestionsResponse, status_code=status.HTTP_200_OK)
+async def tutor_questions(request: GenerateTutorQuestionsRequest = Body(...)):
+    """Production endpoint for tutor questions - same as /generate-tutor-questions"""
+    return await generate_tutor_questions(request)
