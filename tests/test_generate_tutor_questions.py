@@ -1,5 +1,11 @@
 import pytest
+import sys
+import os
 from fastapi.testclient import TestClient
+
+# Add python_worker to path
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'python_worker'))
+
 from python_worker.generate_tutor_questions import app
 
 client = TestClient(app)

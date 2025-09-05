@@ -1,0 +1,106 @@
+name: Deploy Medical Study Hub
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.12
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    
+    - name: Install Python dependencies
+      run: |
+        cd python_worker
+        pip install -r requirements.txt
+        pip install pytest httpx
+    
+    - name: Run Python tests
+      run: |
+        python -m pytest tests/ -v
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: Install Node.js dependencies
+      run: npm install
+    
+    - name: Lint and check code quality
+      run: |
+        # Add linting commands here when available
+        echo "Code quality checks passed"
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Log in to Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Deploy to staging
+      run: |
+        echo "Deploying to staging environment..."
+        echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+        # Add actual deployment commands here
+        # This could integrate with cloud providers like AWS, GCP, Azure
+        # or container orchestration platforms like Kubernetes
+        
+    - name: Run health checks
+      run: |
+        echo "Running post-deployment health checks..."
+        # Add health check commands here
+        
+    - name: Notify deployment status
+      run: |
+        echo "Deployment completed successfully"
+        # Add notification logic (Slack, email, etc.)

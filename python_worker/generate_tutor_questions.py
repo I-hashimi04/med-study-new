@@ -1,9 +1,14 @@
-from fastapi import APIRouter, Body, HTTPException, status
+from fastapi import APIRouter, Body, HTTPException, status, FastAPI
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, constr
-from typing import List, Optional
+from typing import List, Optional, Generator
 import logging
-from python_worker.main import query_local_llm
+import json
+import asyncio
+from llm_utils import query_local_llm
 
+# Create FastAPI app for testing
+app = FastAPI()
 router = APIRouter()
 
 MAX_TEXT_LENGTH = 100_000  # Same as review step
@@ -88,3 +93,99 @@ async def generate_tutor_questions(request: GenerateTutorQuestionsRequest = Body
         questions=questions,
         message="Tutor questions generated successfully."
     )
+
+# Streaming endpoint for real-time question generation
+@router.post("/generate-tutor-questions-stream")
+async def generate_tutor_questions_stream(request: GenerateTutorQuestionsRequest = Body(...)):
+    """Stream tutor questions as they are generated"""
+    text = request.reviewed_text.strip()
+    if not text:
+        raise HTTPException(status_code=422, detail="Reviewed text is empty.")
+    
+    async def generate_stream():
+        try:
+            # Simulate streaming by yielding chunks
+            yield "data: " + json.dumps({"status": "starting", "message": "Beginning question generation..."}) + "\n\n"
+            
+            # Generate questions
+            llm_output = query_local_llm(text)
+            questions = parse_llm_questions(llm_output)
+            
+            # Stream each question as it's "generated"
+            for i, question in enumerate(questions):
+                await asyncio.sleep(0.5)  # Simulate processing time
+                yield "data: " + json.dumps({
+                    "status": "question_generated", 
+                    "question": question.dict(),
+                    "index": i
+                }) + "\n\n"
+            
+            yield "data: " + json.dumps({
+                "status": "completed",
+                "total_questions": len(questions)
+            }) + "\n\n"
+            
+        except Exception as e:
+            yield "data: " + json.dumps({
+                "status": "error",
+                "message": str(e)
+            }) + "\n\n"
+    
+    return StreamingResponse(generate_stream(), media_type="text/plain")
+
+# Feedback endpoints
+class QuestionFeedback(BaseModel):
+    question_id: str
+    rating: int  # 1-5 scale
+    comments: Optional[str] = None
+    difficulty_accurate: Optional[bool] = None
+    tags_accurate: Optional[bool] = None
+
+@router.post("/feedback")
+async def submit_feedback(feedback: QuestionFeedback):
+    """Submit feedback for a generated question"""
+    # In a real implementation, this would save to a database
+    logging.info(f"Received feedback for question {feedback.question_id}: {feedback.rating}/5")
+    return {"success": True, "message": "Feedback received successfully"}
+
+@router.get("/feedback/{question_id}")
+async def get_feedback(question_id: str):
+    """Get feedback for a specific question"""
+    # Mock response - in production this would query a database
+    return {
+        "question_id": question_id,
+        "average_rating": 4.2,
+        "total_feedback": 15,
+        "feedback_summary": {
+            "difficulty_accurate": 85,
+            "tags_accurate": 92
+        }
+    }
+
+# Model comparison stub
+class ModelComparison(BaseModel):
+    models: List[str]
+    content: str
+
+@router.post("/compare-models")
+async def compare_models(comparison: ModelComparison):
+    """Compare question generation across different models"""
+    results = {}
+    for model in comparison.models:
+        # Mock comparison - in production this would call different models
+        results[model] = {
+            "questions_generated": 5,
+            "avg_difficulty": "moderate",
+            "avg_rating": 4.0 + (hash(model) % 10) / 10,
+            "processing_time": 2.5 + (hash(model) % 5)
+        }
+    
+    return {
+        "comparison_id": "comp_123",
+        "models_compared": comparison.models,
+        "results": results,
+        "recommendation": max(results.keys(), key=lambda k: results[k]["avg_rating"])
+    }
+
+# Include router in app for testing
+app.include_router(router)
