@@ -16,9 +16,10 @@ class GenerateTutorQuestionsRequest(BaseModel):
 class TutorQuestion(BaseModel):
     question: str
     answer: str
-    reference: Optional[str] = None
-    difficulty: Optional[str] = None
+    reference: Optional[str] = None  # Can reference slides, sections, images, tables, etc
+    difficulty: str                  # Now mandatory
     hint: Optional[str] = None
+    tags: List[str]                  # New: required tags
 
 class GenerateTutorQuestionsResponse(BaseModel):
     success: bool
@@ -28,26 +29,29 @@ class GenerateTutorQuestionsResponse(BaseModel):
 def parse_llm_questions(llm_output) -> List[TutorQuestion]:
     questions = []
     for item in llm_output.get("tutor_questions", []):
+        difficulty = item.get("difficulty")
+        tags = item.get("tags", [])
+        if not difficulty or not tags:
+            continue  # Skip incomplete questions
         if item.get("type", "open") == "open":
-            # Reasoning-focused open question
             questions.append(
                 TutorQuestion(
                     question=item.get("question", ""),
                     answer=item.get("answer", ""),
                     reference=item.get("reference"),
-                    difficulty=item.get("difficulty"),
+                    difficulty=difficulty,
                     hint=item.get("hint"),
+                    tags=tags,
                 )
             )
         elif item.get("type", "") == "mcq":
-            # MCQ as fallback/secondary
             stem = item.get("stem", "")
             options = item.get("options", [])
             answer = item.get("answer", "")
             explanation = item.get("explanation", "")
             ref = item.get("reference")
-            difficulty = item.get("difficulty")
             hint = item.get("hint")
+            mcq_tags = item.get("tags", [])
             mcq_question = f"MCQ: {stem}\nOptions: {', '.join(options)}\nAnswer: {answer}\nExplanation: {explanation}"
             questions.append(
                 TutorQuestion(
@@ -56,6 +60,7 @@ def parse_llm_questions(llm_output) -> List[TutorQuestion]:
                     reference=ref,
                     difficulty=difficulty,
                     hint=hint,
+                    tags=mcq_tags,
                 )
             )
     return questions
