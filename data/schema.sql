@@ -1,0 +1,2 @@
+-- Initial DB schema placeholder
+-- Will be filled in Phase 3
